@@ -3,7 +3,7 @@ name: Build mt7601u Kernel Module
 on:
   push:
     branches:
-      - R  # অথবা main দিন যদি আপনার ব্রাঞ্চ main হয়
+      - R  # main হলে main লিখুন
 
 jobs:
   build:
@@ -25,26 +25,26 @@ jobs:
           cd $GITHUB_WORKSPACE
           make ARCH=arm64 a20s_defconfig
 
-      - name: Disable stack protector (optional)
+      - name: Patch config for clang
         run: |
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/CONFIG_CC_STACKPROTECTOR_STRONG=n/' .config || true
 
       - name: Prepare kernel build
         run: |
           cd $GITHUB_WORKSPACE
+          export CLANG_TRIPLE=aarch64-linux-android-
           make ARCH=arm64 \
                CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28- \
                CC=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
-               CLANG_TRIPLE=aarch64-linux-android- \
                modules_prepare
 
       - name: Build mt7601u module
         run: |
           cd $GITHUB_WORKSPACE
+          export CLANG_TRIPLE=aarch64-linux-android-
           make ARCH=arm64 \
                CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28- \
                CC=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
-               CLANG_TRIPLE=aarch64-linux-android- \
                M=drivers/net/wireless/mediatek/mt7601u modules
 
       - name: Upload built module
