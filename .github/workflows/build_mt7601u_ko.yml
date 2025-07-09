@@ -11,6 +11,7 @@ jobs:
     env:
       ARCH: arm64
       CROSS_COMPILE: /tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-
+      CLANG_TRIPLE: aarch64-linux-android-
 
     steps:
       - name: Checkout kernel source
@@ -35,12 +36,12 @@ jobs:
       - name: Prepare kernel build
         run: |
           cd $GITHUB_WORKSPACE
-          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=clang modules_prepare
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=clang CLANG_TRIPLE=${CLANG_TRIPLE} modules_prepare
 
       - name: Build mt7601u module
         run: |
           cd $GITHUB_WORKSPACE
-          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=clang M=drivers/net/wireless/mediatek/mt7601u modules
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=clang CLANG_TRIPLE=${CLANG_TRIPLE} M=drivers/net/wireless/mediatek/mt7601u modules
 
       - name: Upload built module
         uses: actions/upload-artifact@v4
