@@ -3,7 +3,7 @@ name: Build mt7601u Kernel Module
 on:
   push:
     branches:
-      - main
+      - R
 
 jobs:
   build:
