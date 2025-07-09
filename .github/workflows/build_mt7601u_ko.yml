@@ -1,0 +1,40 @@
+name: Build mt7601u Kernel Module
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      ARCH: arm64
+      CROSS_COMPILE: ${{ runner.temp }}/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android-
+
+    steps:
+      - name: Checkout kernel source
+        uses: actions/checkout@v3
+
+      - name: Download Android NDK (r25b)
+        run: |
+          mkdir -p ${{ runner.temp }}/ndk
+          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
+          unzip -q ndk.zip -d ${{ runner.temp }}/ndk
+          mv ${{ runner.temp }}/ndk/android-ndk-r25b ${{ runner.temp }}/ndk/ndk
+
+      - name: Prepare kernel build
+        run: |
+          cd $GITHUB_WORKSPACE
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules_prepare
+
+      - name: Build mt7601u module
+        run: |
+          cd $GITHUB_WORKSPACE
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} M=drivers/net/wireless/mediatek/mt7601u modules
+
+      - name: Upload built mt7601u.ko module
+        uses: actions/upload-artifact@v3
+        with:
+          name: mt7601u.ko
+          path: drivers/net/wireless/mediatek/mt7601u/*.ko
