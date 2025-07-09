@@ -3,14 +3,14 @@ name: Build mt7601u Kernel Module
 on:
   push:
     branches:
-      - R  # replace with your actual branch name
+      - R  # আপনার ব্রাঞ্চ যদি main হয় তাহলে main লিখুন
 
 jobs:
   build:
     runs-on: ubuntu-latest
     env:
       ARCH: arm64
-      CROSS_COMPILE: /tmp/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-clang-
+      CROSS_COMPILE: /tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-
 
     steps:
       - name: Checkout kernel source
@@ -28,15 +28,19 @@ jobs:
           cd $GITHUB_WORKSPACE
           make ARCH=${ARCH} a20s_defconfig
 
+      - name: Patch .config for clang compatibility
+        run: |
+          sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/CONFIG_CC_STACKPROTECTOR_STRONG=n/' .config || true
+
       - name: Prepare kernel build
         run: |
           cd $GITHUB_WORKSPACE
-          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} modules_prepare
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=clang modules_prepare
 
       - name: Build mt7601u module
         run: |
           cd $GITHUB_WORKSPACE
-          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} M=drivers/net/wireless/mediatek/mt7601u modules
+          make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} CC=clang M=drivers/net/wireless/mediatek/mt7601u modules
 
       - name: Upload built module
         uses: actions/upload-artifact@v4
