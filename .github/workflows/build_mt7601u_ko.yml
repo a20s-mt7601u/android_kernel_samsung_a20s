@@ -3,7 +3,7 @@ name: Build mt7601u Kernel Module
 on:
   push:
     branches:
-      - R  # Replace 'R' with your actual branch name if different
+      - R  # Replace 'R' if your branch name is different
 
 jobs:
   build:
@@ -34,7 +34,7 @@ jobs:
           make ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} M=drivers/net/wireless/mediatek/mt7601u modules
 
       - name: Upload built module
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: mt7601u.ko
           path: drivers/net/wireless/mediatek/mt7601u/*.ko
