@@ -3,7 +3,7 @@ name: Build mt7601u Kernel Module
 on:
   push:
     branches:
-      - R  # অথবা main যদি আপনার default ব্রাঞ্চ হয়
+      - R  # অথবা main দিন যদি আপনার ব্রাঞ্চ main হয়
 
 jobs:
   build:
@@ -20,30 +20,32 @@ jobs:
           unzip -q ndk.zip -d /tmp/ndk
           mv /tmp/ndk/android-ndk-r25b /tmp/ndk/ndk
 
-      - name: Set environment variables
-        run: |
-          echo "ARCH=arm64" >> $GITHUB_ENV
-          echo "CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28-" >> $GITHUB_ENV
-          echo "CLANG_TRIPLE=aarch64-linux-android-" >> $GITHUB_ENV
-
       - name: Generate .config using a20s_defconfig
         run: |
           cd $GITHUB_WORKSPACE
           make ARCH=arm64 a20s_defconfig
 
-      - name: Patch .config for clang compatibility
+      - name: Disable stack protector (optional)
         run: |
           sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/CONFIG_CC_STACKPROTECTOR_STRONG=n/' .config || true
 
       - name: Prepare kernel build
         run: |
           cd $GITHUB_WORKSPACE
-          make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE CC=clang CLANG_TRIPLE=$CLANG_TRIPLE modules_prepare
+          make ARCH=arm64 \
+               CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28- \
+               CC=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
+               CLANG_TRIPLE=aarch64-linux-android- \
+               modules_prepare
 
       - name: Build mt7601u module
         run: |
           cd $GITHUB_WORKSPACE
-          make ARCH=arm64 CROSS_COMPILE=$CROSS_COMPILE CC=clang CLANG_TRIPLE=$CLANG_TRIPLE M=drivers/net/wireless/mediatek/mt7601u modules
+          make ARCH=arm64 \
+               CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28- \
+               CC=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
+               CLANG_TRIPLE=aarch64-linux-android- \
+               M=drivers/net/wireless/mediatek/mt7601u modules
 
       - name: Upload built module
         uses: actions/upload-artifact@v4
