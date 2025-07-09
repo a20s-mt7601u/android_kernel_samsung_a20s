@@ -3,7 +3,7 @@ name: Build mt7601u Kernel Module
 on:
   push:
     branches:
-      - R  # আপনার ব্রাঞ্চ নাম এখানে দিন, যেমন main বা অন্য
+      - R  # replace with your actual branch name
 
 jobs:
   build:
@@ -23,12 +23,10 @@ jobs:
           unzip -q ndk.zip -d /tmp/ndk
           mv /tmp/ndk/android-ndk-r25b /tmp/ndk/ndk
 
-      - name: Ensure kernel config
+      - name: Generate .config using a20s_defconfig
         run: |
           cd $GITHUB_WORKSPACE
-          if [ ! -f .config ]; then
-            make ARCH=${ARCH} defconfig
-          fi
+          make ARCH=${ARCH} a20s_defconfig
 
       - name: Prepare kernel build
         run: |
