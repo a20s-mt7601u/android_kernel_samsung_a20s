@@ -1,4 +1,4 @@
-name: Build A20s Kernel
+name: Build mt7601u Module
 
 on:
   workflow_dispatch:
@@ -14,8 +14,10 @@ jobs:
       CROSS_COMPILE: aarch64-linux-android-
 
     steps:
-    - name: Checkout Kernel Source
+    - name: Checkout Kernel Source (custom branch)
       uses: actions/checkout@v3
+      with:
+        ref: R # ⬅️ এখানে তোমার actual branch name দাও
 
     - name: Setup Toolchains
       run: |
@@ -34,26 +36,19 @@ jobs:
         echo "CLANG_PATH=$(pwd)/clang" >> $GITHUB_ENV
         echo "GCC64_PATH=$(pwd)/aarch64" >> $GITHUB_ENV
 
-    - name: Build Kernel
+    - name: Prepare .config
       run: |
         export PATH=$CLANG_PATH/bin:$GCC64_PATH/bin:$PATH
-
-        # Create output dir
         mkdir -p out
+        make O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-android- CLANG_TRIPLE=aarch64-linux-android- a20s_defconfig
 
-        # Load defconfig
-        make O=out ARCH=arm64 CC=clang \
-          CROSS_COMPILE=aarch64-linux-android- \
-          CLANG_TRIPLE=aarch64-linux-android- \
-          a20s_defconfig
+    - name: Build mt7601u.ko module
+      run: |
+        export PATH=$CLANG_PATH/bin:$GCC64_PATH/bin:$PATH
+        make -C $(pwd) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-android- CLANG_TRIPLE=aarch64-linux-android- M=drivers/net/wireless/mediatek/mt7601u modules
 
-        # Compile kernel
-        make -j$(nproc) O=out ARCH=arm64 CC=clang \
-          CROSS_COMPILE=aarch64-linux-android- \
-          CLANG_TRIPLE=aarch64-linux-android-
-
-    - name: Upload zImage or Image.gz
+    - name: Upload .ko
       uses: actions/upload-artifact@v3
       with:
-        name: Kernel Image
-        path: out/arch/arm64/boot/*
+        name: mt7601u-ko
+        path: out/drivers/net/wireless/mediatek/mt7601u/*.ko
