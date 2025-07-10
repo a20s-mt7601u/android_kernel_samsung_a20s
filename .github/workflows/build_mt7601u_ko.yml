@@ -14,25 +14,20 @@ jobs:
       CROSS_COMPILE: aarch64-linux-android-
 
     steps:
-    - name: Checkout Kernel Source (custom branch)
+    - name: Checkout Kernel Source (branch R)
       uses: actions/checkout@v3
       with:
-        ref: R # ⬅️ এখানে তোমার actual branch name দাও
+        ref: R
 
     - name: Setup Toolchains
       run: |
         mkdir -p toolchains && cd toolchains
-
-        # Download Clang
         wget https://github.com/ClangBuiltLinux/clang-built-linux/releases/download/17.0.0/clang+llvm-17.0.0-x86_64-linux-gnu.tar.xz
         tar -xf clang+llvm-17.0.0-x86_64-linux-gnu.tar.xz
         mv clang+llvm-17.0.0-x86_64-linux-gnu clang
-
-        # Download GCC (aarch64)
         wget https://releases.linaro.org/components/toolchain/binaries/latest/aarch64-linux-gnu/gcc-aarch64-linux-gnu.tar.xz
         tar -xf gcc-aarch64-linux-gnu.tar.xz
         mv gcc-aarch64-linux-gnu aarch64
-
         echo "CLANG_PATH=$(pwd)/clang" >> $GITHUB_ENV
         echo "GCC64_PATH=$(pwd)/aarch64" >> $GITHUB_ENV
 
@@ -42,12 +37,12 @@ jobs:
         mkdir -p out
         make O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-android- CLANG_TRIPLE=aarch64-linux-android- a20s_defconfig
 
-    - name: Build mt7601u.ko module
+    - name: Build mt7601u.ko
       run: |
         export PATH=$CLANG_PATH/bin:$GCC64_PATH/bin:$PATH
         make -C $(pwd) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-android- CLANG_TRIPLE=aarch64-linux-android- M=drivers/net/wireless/mediatek/mt7601u modules
 
-    - name: Upload .ko
+    - name: Upload module
       uses: actions/upload-artifact@v3
       with:
         name: mt7601u-ko
