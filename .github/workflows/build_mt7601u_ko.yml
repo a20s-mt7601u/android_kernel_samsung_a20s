@@ -1,54 +1,37 @@
-name: Build mt7601u Kernel Module
+name: Build Kernel
 
 on:
   push:
-    branches:
-      - R  # main হলে main লিখুন
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ARCH: arm64
+      SUBARCH: arm64
+      CLANG_TRIPLE: aarch64-linux-gnu-
+
     steps:
-      - name: Checkout kernel source
-        uses: actions/checkout@v3
+    - name: Checkout source
+      uses: actions/checkout@v3
 
-      - name: Download Android NDK (r25b)
-        run: |
-          mkdir -p /tmp/ndk
-          wget https://dl.google.com/android/repository/android-ndk-r25b-linux.zip -O ndk.zip
-          unzip -q ndk.zip -d /tmp/ndk
-          mv /tmp/ndk/android-ndk-r25b /tmp/ndk/ndk
+    - name: Setup dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64
 
-      - name: Generate .config using a20s_defconfig
-        run: |
-          cd $GITHUB_WORKSPACE
-          make ARCH=arm64 a20s_defconfig
+    - name: Setup Clang
+      run: |
+        mkdir clang
+        cd clang
+        wget https://github.com/ClangBuiltLinux/clang-built-linux/releases/download/17.0.0/clang+llvm-17.0.0-x86_64-linux-gnu.tar.xz
+        tar -xf clang+llvm-17.0.0-x86_64-linux-gnu.tar.xz
+        echo "CLANG_PATH=$(pwd)/clang+llvm-17.0.0-x86_64-linux-gnu" >> $GITHUB_ENV
 
-      - name: Patch config for clang
-        run: |
-          sed -i 's/CONFIG_CC_STACKPROTECTOR_STRONG=y/CONFIG_CC_STACKPROTECTOR_STRONG=n/' .config || true
-
-      - name: Prepare kernel build
-        run: |
-          cd $GITHUB_WORKSPACE
-          export CLANG_TRIPLE=aarch64-linux-android-
-          make ARCH=arm64 \
-               CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28- \
-               CC=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
-               modules_prepare
-
-      - name: Build mt7601u module
-        run: |
-          cd $GITHUB_WORKSPACE
-          export CLANG_TRIPLE=aarch64-linux-android-
-          make ARCH=arm64 \
-               CROSS_COMPILE=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android28- \
-               CC=/tmp/ndk/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin/clang \
-               M=drivers/net/wireless/mediatek/mt7601u modules
-
-      - name: Upload built module
-        uses: actions/upload-artifact@v4
-        with:
-          name: mt7601u.ko
-          path: drivers/net/wireless/mediatek/mt7601u/*.ko
+    - name: Build Kernel
+      run: |
+        export PATH=$CLANG_PATH/bin:$PATH
+        make O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- defconfig
+        make -j$(nproc) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu-
