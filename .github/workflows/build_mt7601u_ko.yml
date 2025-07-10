@@ -1,8 +1,7 @@
-name: Build Kernel
+name: Build A20s Kernel
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -11,27 +10,50 @@ jobs:
     env:
       ARCH: arm64
       SUBARCH: arm64
-      CLANG_TRIPLE: aarch64-linux-gnu-
+      CLANG_TRIPLE: aarch64-linux-android-
+      CROSS_COMPILE: aarch64-linux-android-
 
     steps:
-    - name: Checkout source
+    - name: Checkout Kernel Source
       uses: actions/checkout@v3
 
-    - name: Setup dependencies
+    - name: Setup Toolchains
       run: |
-        sudo apt update
-        sudo apt install -y bc bison flex libssl-dev make libc6-dev libncurses5-dev crossbuild-essential-arm64
+        mkdir -p toolchains && cd toolchains
 
-    - name: Setup Clang
-      run: |
-        mkdir clang
-        cd clang
+        # Download Clang
         wget https://github.com/ClangBuiltLinux/clang-built-linux/releases/download/17.0.0/clang+llvm-17.0.0-x86_64-linux-gnu.tar.xz
         tar -xf clang+llvm-17.0.0-x86_64-linux-gnu.tar.xz
-        echo "CLANG_PATH=$(pwd)/clang+llvm-17.0.0-x86_64-linux-gnu" >> $GITHUB_ENV
+        mv clang+llvm-17.0.0-x86_64-linux-gnu clang
+
+        # Download GCC (aarch64)
+        wget https://releases.linaro.org/components/toolchain/binaries/latest/aarch64-linux-gnu/gcc-aarch64-linux-gnu.tar.xz
+        tar -xf gcc-aarch64-linux-gnu.tar.xz
+        mv gcc-aarch64-linux-gnu aarch64
+
+        echo "CLANG_PATH=$(pwd)/clang" >> $GITHUB_ENV
+        echo "GCC64_PATH=$(pwd)/aarch64" >> $GITHUB_ENV
 
     - name: Build Kernel
       run: |
-        export PATH=$CLANG_PATH/bin:$PATH
-        make O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu- defconfig
-        make -j$(nproc) O=out ARCH=arm64 CC=clang CROSS_COMPILE=aarch64-linux-gnu- CLANG_TRIPLE=aarch64-linux-gnu-
+        export PATH=$CLANG_PATH/bin:$GCC64_PATH/bin:$PATH
+
+        # Create output dir
+        mkdir -p out
+
+        # Load defconfig
+        make O=out ARCH=arm64 CC=clang \
+          CROSS_COMPILE=aarch64-linux-android- \
+          CLANG_TRIPLE=aarch64-linux-android- \
+          a20s_defconfig
+
+        # Compile kernel
+        make -j$(nproc) O=out ARCH=arm64 CC=clang \
+          CROSS_COMPILE=aarch64-linux-android- \
+          CLANG_TRIPLE=aarch64-linux-android-
+
+    - name: Upload zImage or Image.gz
+      uses: actions/upload-artifact@v3
+      with:
+        name: Kernel Image
+        path: out/arch/arm64/boot/*
